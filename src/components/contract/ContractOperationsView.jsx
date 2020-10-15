@@ -87,7 +87,7 @@ class ContractOperationsView extends React.Component {
     render() {
         //select only non-constant methods
         let methods = this.props.contract._jsonInterface.filter(
-            item => item.constant === false
+            item =>((item.stateMutability !== "view")&&(item.stateMutability))
         );
 
         return (
