@@ -14,7 +14,8 @@ function Metamask() {
     var _processError = function (error) {
         if (error.message && error.message.includes(deniedTransactionSignature)) {
             return errorCodes.metamaskReject;
-        } if (error.message && error.message.includes(deniedMessageSignature)) {
+        }
+        if (error.message && error.message.includes(deniedMessageSignature)) {
             return errorCodes.metamaskMessageSignReject;
         } else {
             return errorCodes.unknownError;
@@ -30,45 +31,45 @@ function Metamask() {
 
 
 
-    this.decrypt = function() {
+    this.decrypt = function () {
         return new Promise(function (resolve, reject) {
-            if (window.ethereum && !isLoaded) {
-                window.web3 = new Web3(ethereum);
-                isLoaded = true;
-            }
+            // web3 not suport
+            //  https://docs.metamask.io/guide/provider-migration.html#replacing-window-web3
+            // if (window.ethereum && !isLoaded) {
+            //     window.web3 = new Web3(ethereum);
+            //     isLoaded = true;
+            // }
             if (window.ethereum) {
                 ethereum.enable()
-                .then(() => {
-                    _decrypt()
+                    .then(() => {
+                        _decrypt()
+                            .then(account => {
+                                resolve(account);
+                            })
+                            .catch(error => {
+                                reject(error);
+                            })
+                    })
+                    .catch(() => {
+                        //если пользователь отменил, то скидываем прогрузку, чтобы запросить повторно
+                        isLoaded = false;
+                        reject(errorCodes.metamaskRejectAccess);
+                    })
+            } else {
+                _decrypt()
                     .then(account => {
                         resolve(account);
                     })
                     .catch(error => {
                         reject(error);
                     })
-                })
-                .catch(() => {
-                    //если пользователь отменил, то скидываем прогрузку, чтобы запросить повторно
-                    isLoaded = false;
-                    reject(errorCodes.metamaskRejectAccess);
-                })
-            } else {
-                _decrypt()
-                .then(account => {
-                    resolve(account);
-                })
-                .catch(error => {
-                    reject(error);
-                })
             }
         })
     }
 
     var _decrypt = function () {
         return new Promise(function (resolve, reject) {
-            if (!_checkWeb3()) {
-                reject(errorCodes.metamaskConnectFailed);
-            } else {
+            if (_checkWeb3()) {
                 window.web3.eth.getAccounts(function (err, accounts) {
                     if (err || !accounts.length) {
                         reject(errorCodes.metamaskLocked);
@@ -77,6 +78,19 @@ function Metamask() {
                     }
                     //SSL
                 })
+            } else {
+                ethereum.request({
+                        method: 'eth_accounts'
+                    })
+                    .then(accounts => {
+                        console.log(accounts);
+                        if (!accounts.length) {
+                            reject(errorCodes.metamaskLocked);
+                        } else {
+                            resolve(accounts[0]);
+                        }
+                        //SSL
+                    })
             }
         })
     }
@@ -88,37 +102,50 @@ function Metamask() {
         return new Promise(function (resolve, reject) {
             //достаем аккаунт
             thisObject.decrypt()
-            .then(account=>{
-                if(transaction.from.toLowerCase() != account.toLowerCase()) {
-                    reject(errorCodes.metamaskWrongAccount);
-                } else {
-                    window.web3.version.getNetwork(function (err, network) {
-                        if(err) {
-                            reject(errorCodes.metamaskException);
+                .then(account => {
+                    if (transaction.from.toLowerCase() != account.toLowerCase()) {
+                        reject(errorCodes.metamaskWrongAccount);
+                    } else {
+                        let network = ethereum.networkVersion;
+                        if (transaction.chainId != network) {
+                            reject(errorCodes.metamaskWrongNetwork);
                         } else {
-                            if(transaction.chainId != network) {
-                                reject(errorCodes.metamaskWrongNetwork);
-                            } else {
+                            // old version
+                            if (_checkWeb3()) {
                                 window.web3.eth.sendTransaction(_setGasLimit(transaction), function (err, txHash) {
-                                    if (err) {             
+                                    if (err) {
                                         reject(_processError(err));
-                                    }
-                                    else {
+                                    } else {
                                         resolve(txHash);
                                     }
                                 })
+                            } else {
+                                try {
+                                    window.ethereum.request({
+                                            method: 'eth_sendTransaction',
+                                            params: [
+                                                transaction
+                                            ],
+                                        })
+                                        .then(txHash => {
+                                            resolve(txHash);
+                                        })
+                                        .catch(err => {
+                                            reject(_processError(err));
+                                        })
+                                } catch (err) {
+                                    reject(_processError(err));
+                                }
                             }
                         }
-                    })
-                }
-            })
-            .catch(error=>{
-                reject(error);
-            })
+                    }
+                })
+                .catch(error => {
+                    reject(error);
+                })
         })
     }
 
 }
 
 export default new Metamask();
-
