@@ -13,19 +13,25 @@ const getConfig = (networkId) => {
     switch (networkId) {
         case '1':
         case 1:
-            return {domain: 'etherscan', api: 'mainnet'};
+            return {domain: 'etherscan.io', api: 'mainnet'};
         case '3':
         case 3:
-            return {domain: 'ropsten.etherscan', api: 'ropsten'};
+            return {domain: 'ropsten.etherscan.io', api: 'ropsten'};
         case '4':
         case 4:
-            return {domain: 'rinkeby.etherscan', api: 'rinkeby'};
+            return {domain: 'rinkeby.etherscan.io', api: 'rinkeby'};
         case '5':
         case 5:
-            return {domain: 'goerli.etherscan', api: 'goerli'};
+            return {domain: 'goerli.etherscan.io', api: 'goerli'};
         case '42':
         case 42:
-            return {domain: 'kovan.etherscan', api: 'kovan'};
+            return {domain: 'kovan.etherscan.io', api: 'kovan'};
+        case '56':
+        case 56:
+            return {domain: 'bscscan.com', api: 'bsc'};
+        case '128':
+        case 128:
+            return {domain: 'scan.hecochain.com', api: 'heco'};
         default:
             return {domain: '', api: ''};
     }
@@ -41,7 +47,7 @@ export const isPublicNetowrk = networkId => getConfig(networkId).domain != '';
  * Returns etherscan website url
  * @param {*} networkId 
  */
-export const getRootUrl = networkId => `https://${getConfig(networkId).domain}.io/`;
+export const getRootUrl = networkId => `https://${getConfig(networkId).domain}/`;
 
 /**
  * Returns etherscan url to check specific transaction
